@@ -14,7 +14,8 @@ const passportLocalMongoose = require("passport-local-mongoose");
 const { initialize } = require("passport");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
-const findOrCreate = require('mongoose-findorcreate')
+const findOrCreate = require('mongoose-findorcreate');
+const myFunctions = require("./functions.js");
 
 const app = express();
 
@@ -37,7 +38,8 @@ const userSchema = new mongoose.Schema({
     email : String,
     password : String,
     googleId : String,
-    facebookId : String
+    facebookId : String,
+    secret : String,
 });
 
 // userSchema.plugin(encrypt, {secret : process.env.SECRET, encryptedFields : ["password"]});
@@ -126,11 +128,14 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", function(req, res){
-    if(req.isAuthenticated()){
-        res.render("secrets")
-    } else {
-        res.redirect("/login");
-    }
+    User.find({secret : {$ne : null}}, function(err, results){
+        if(!err){
+            if(results){
+            const shuffledResults = myFunctions.shuffledArray(results);
+            res.render("secrets", {userWithSecrets : shuffledResults});
+            }
+        }
+    })
 });
 
 app.get("/submit", function(req, res){
@@ -217,6 +222,25 @@ app.post("/register", function(req, res){
     //         })
     //     }
     // })
+
+});
+
+app.post("/submit", function(req,res){
+    const submittedSecret = req.body.secret;
+
+    console.log(req.user.id);
+
+    User.findById(req.user.id, function(err, results){
+        if(!err){
+            if(results){
+                console.log(results);
+                results.secret = submittedSecret;
+                results.save();
+            }
+        }
+    })
+
+    res.redirect("/secrets");
 
 });
 
